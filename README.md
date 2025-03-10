@@ -1,5 +1,3 @@
-<img width="317" alt="{129C9ADB-90F0-49D6-AA50-320847FBA749}" src="https://github.com/user-attachments/assets/b0855cd0-6187-4a83-b43a-2540707da186" /><img width="317" alt="{129C9ADB-90F0-49D6-AA50-320847FBA749}" src="https://github.com/user-attachments/assets/6148b120-b4bf-40ed-8720-5aad4322ddf7" /># 🛰️ KSDT_SatRiders
-
 Welcome to the **SatRiders** team repository for the **KAZ ROCKETS Satellite Design Tournament**! 🚀  
 Here, you'll find all the code, documentation, and details about our machine learning model.  
 
@@ -87,7 +85,8 @@ Adafruit_MPU6050
 These are the core libraries we used to ensure efficient and structured development.
 <img width="317" alt="{129C9ADB-90F0-49D6-AA50-320847FBA749}" src="https://github.com/user-attachments/assets/e37a39b7-200c-43a6-9277-7c9345867ea6" />
 
- 
+ We used an Arduino Uno as the main data collection unit. The entire system is powered by a 3.7V lithium battery, followed by a step-up converter to 5V. The sensors used in the system include: three gas sensors, a pressure sensor, a 9-axis accelerometer, an I2C multiplexer, an SD card module, and a GPS module.
+
 ---
 ## 🚀 Get Started
 
