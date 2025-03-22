@@ -1,142 +1,123 @@
 #include <SPI.h>
 #include <SD.h>
 #include <Wire.h>
-#include <Adafruit_BMP085.h>
-#include <Adafruit_MPU6050.h>
+#include <MPU6050.h>
+#include <SFE_BMP180.h>
 #include <TinyGPS++.h>
 #include <SoftwareSerial.h>
+#include <LoRa.h>
 
-#define SD_CS_PIN 4
-#define LOG_INTERVAL 5000
-#define TCA9548A_ADDR 0x70
-#define GPS_BAUDRATE 9600
+MPU6050 mpu;
+SFE_BMP180 pressure;
+TinyGPSPlus gps;
+SoftwareSerial ss(4, 3); // RX, TX
 
-enum I2C_CHANNELS {
-  CHANNEL_MPU9150 = 0,
-  CHANNEL_BMP180 = 1
-};
-
-struct SensorData {
-  unsigned long timestamp;
-  float temperature;
-  float pressure;
-  float altitude;
-  double latitude;
-  double longitude;
-  int mq135;
-  int mq137;
-  int mq131;
-  float accelX;
-  float accelY;
-  float accelZ;
-};
-
-Adafruit_BMP085 bmp180;
-Adafruit_MPU6050 mpu9150;
-TinyGPSPlus gpsParser;
-SoftwareSerial gpsSerial(3, 2);
-File dataFile;
-SensorData currentData;
-
-void SelectI2CChannel(uint8_t channel) {
-  Wire.beginTransmission(TCA9548A_ADDR);
-  Wire.write(1 << channel);
-  Wire.endTransmission();
-}
-
-bool InitializeSDCard() {
-  if (!SD.begin(SD_CS_PIN)) return false;
-  if (!SD.exists("log.csv")) {
-    dataFile = SD.open("log.csv", FILE_WRITE);
-    dataFile.println("Timestamp,Temp(C),Pressure(hPa),Alt(m),Lat,Lon,MQ135,MQ137,MQ131,AccX,AccY,AccZ");
-    dataFile.close();
-  }
-  return true;
-}
-
-void ReadEnvironmentalSensors() {
-  SelectI2CChannel(CHANNEL_BMP180);
-  currentData.temperature = bmp180.readTemperature();
-  currentData.pressure = bmp180.readPressure() / 100.0;
-  currentData.altitude = bmp180.readAltitude();
-}
-
-void ReadMotionSensors() {
-  SelectI2CChannel(CHANNEL_MPU9150);
-  sensors_event_t accel, gyro, temp;
-  mpu9150.getEvent(&accel, &gyro, &temp);
-  currentData.accelX = accel.acceleration.x;
-  currentData.accelY = accel.acceleration.y;
-  currentData.accelZ = accel.acceleration.z;
-}
-
-void ReadGasSensors() {
-  currentData.mq135 = analogRead(A0);
-  currentData.mq137 = analogRead(A1);
-  currentData.mq131 = analogRead(A2);
-}
-
-void ReadGPSData() {
-  while (gpsSerial.available() > 0) {
-    if (gpsParser.encode(gpsSerial.read())) {
-      if (gpsParser.location.isValid()) {
-        currentData.latitude = gpsParser.location.lat();
-        currentData.longitude = gpsParser.location.lng();
-      }
-    }
-  }
-}
-
-void LogSensorData() {
-  dataFile = SD.open("log.csv", FILE_WRITE);
-  if (dataFile) {
-    String dataString = 
-      String(currentData.timestamp) + "," +
-      String(currentData.temperature, 2) + "," +
-      String(currentData.pressure, 2) + "," +
-      String(currentData.altitude, 2) + "," +
-      String(currentData.latitude, 6) + "," +
-      String(currentData.longitude, 6) + "," +
-      currentData.mq135 + "," +
-      currentData.mq137 + "," +
-      currentData.mq131 + "," +
-      String(currentData.accelX, 2) + "," +
-      String(currentData.accelY, 2) + "," +
-      String(currentData.accelZ, 2);
-      
-    dataFile.println(dataString);
-    dataFile.close();
-  }
-}
+File myFile;
 
 void setup() {
   Serial.begin(9600);
   Wire.begin();
-  gpsSerial.begin(GPS_BAUDRATE);
+  mpu.initialize();
+  pressure.begin();
+  ss.begin(9600);
+  LoRa.begin(433E6);
 
-  SelectI2CChannel(CHANNEL_BMP180);
-  if (!bmp180.begin()) Serial.println("BMP180 Init Failed");
-  
-  SelectI2CChannel(CHANNEL_MPU9150);
-  if (!mpu9150.begin()) Serial.println("MPU9150 Init Failed");
-  
-  if (!InitializeSDCard()) Serial.println("SD Card Init Failed");
-  
-  pinMode(A0, INPUT);
-  pinMode(A1, INPUT);
-  pinMode(A2, INPUT);
+  if (!SD.begin(10)) {
+    Serial.println("Ошибка инициализации SD карты!");
+    return;
+  }
+  Serial.println("SD карта инициализирована.");
 
-  delay(30000);
+  if (!mpu.testConnection()) {
+    Serial.println("MPU6050 не подключен!");
+    while (1);
+  }
+
+  if (!LoRa.begin(433E6)) {
+    Serial.println("Ошибка инициализации LoRa!");
+    while (1);
+  }
 }
 
 void loop() {
-  currentData.timestamp = millis();
-  
-  ReadEnvironmentalSensors();
-  ReadMotionSensors();
-  ReadGasSensors();
-  ReadGPSData();
-  LogSensorData();
+  int mq135Value = analogRead(A0);
+  int mq9Value = analogRead(A1);
+  int mq131Value = analogRead(A2);
+  int lm35Value = analogRead(A3);
+  int voltmeterValue = analogRead(A6);
 
-  delay(LOG_INTERVAL);
+  int16_t ax, ay, az;
+  mpu.getAcceleration(&ax, &ay, &az);
+
+  char status;
+  double T, P;
+  status = pressure.startTemperature();
+  if (status != 0) {
+    delay(status);
+    status = pressure.getTemperature(T);
+    if (status != 0) {
+      status = pressure.startPressure(3);
+      if (status != 0) {
+        delay(status);
+        status = pressure.getPressure(P, T);
+      }
+    }
+  }
+
+  while (ss.available() > 0) {
+    gps.encode(ss.read());
+  }
+
+  float latitude = gps.location.lat();
+  float longitude = gps.location.lng();
+
+  float lightLevel = readLightLevel();
+
+  myFile = SD.open("data.txt", FILE_WRITE);
+  if (myFile) {
+    myFile.print("MQ-135: "); myFile.println(mq135Value);
+    myFile.print("MQ-9: "); myFile.println(mq9Value);
+    myFile.print("MQ-131: "); myFile.println(mq131Value);
+    myFile.print("LM35: "); myFile.println(lm35Value);
+    myFile.print("Voltmeter: "); myFile.println(voltmeterValue);
+    myFile.print("Accel: "); myFile.print(ax); myFile.print(", "); myFile.print(ay); myFile.print(", "); myFile.println(az);
+    myFile.print("Temperature: "); myFile.println(T);
+    myFile.print("Pressure: "); myFile.println(P);
+    myFile.print("Latitude: "); myFile.println(latitude);
+    myFile.print("Longitude: "); myFile.println(longitude);
+    myFile.print("Light Level: "); myFile.println(lightLevel);
+    myFile.close();
+    Serial.println("Данные записаны на SD карту.");
+  } else {
+    Serial.println("Ошибка открытия файла!");
+  }
+
+  LoRa.beginPacket();
+  LoRa.print("MQ-135: "); LoRa.println(mq135Value);
+  LoRa.print("MQ-9: "); LoRa.println(mq9Value);
+  LoRa.print("MQ-131: "); LoRa.println(mq131Value);
+  LoRa.print("LM35: "); LoRa.println(lm35Value);
+  LoRa.print("Voltmeter: "); LoRa.println(voltmeterValue);
+  LoRa.print("Accel: "); LoRa.print(ax); LoRa.print(", "); LoRa.print(ay); LoRa.print(", "); LoRa.println(az);
+  LoRa.print("Temperature: "); LoRa.println(T);
+  LoRa.print("Pressure: "); LoRa.println(P);
+  LoRa.print("Latitude: "); LoRa.println(latitude);
+  LoRa.print("Longitude: "); LoRa.println(longitude);
+  LoRa.print("Light Level: "); LoRa.println(lightLevel);
+  LoRa.endPacket();
+
+  delay(1000);
+}
+
+float readLightLevel() {
+  Wire.beginTransmission(0x23);
+  Wire.write(0x10);
+  Wire.endTransmission();
+  delay(200);
+
+  Wire.requestFrom(0x23, 2);
+  uint16_t level = Wire.read();
+  level <<= 8;
+  level |= Wire.read();
+  return level / 1.2;
 }
