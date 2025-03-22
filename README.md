@@ -12,7 +12,7 @@ Ensemble learning is a machine learning technique that combines multiple models 
 
 ---
 
-## 🧠 How Our Model Works
+## 🧐 How Our Model Works
 
 Our machine learning model is designed to analyze satellite data and predict environmental factors such as pollution levels, wind patterns, and topography. Here's how it works:
 
@@ -39,7 +39,51 @@ Our model produces the following outputs:
 
 ---
 
-## 🗺️ Folium Map Visualization
+## 🌿 Updated Neural Network Model (2025)
+
+We have developed a **custom neural network model** using **PyTorch** to enhance prediction accuracy even further.  
+This model complements our ensemble learning system and was specifically trained on environmental datasets, including gas sensor data, temperature, humidity, and pressure.
+
+### 🔪 Model Architecture
+- **Type**: Deep Neural Network (DNN)
+- **Layers**: 4 fully connected layers with ReLU activation functions
+- **Loss Function**: Mean Squared Error (MSE)
+- **Optimizer**: Stochastic Gradient Descent (SGD)
+- **Training Accuracy**: ~94%
+- **Test Loss (MSE)**: 2425.7
+
+### 🔢 Model Input Features:
+- Gas Concentration Sensors
+- Temperature
+- Humidity
+- Wind Speed & Direction
+- Atmospheric Pressure
+
+### 📈 Model Output:
+- Prediction of pollution levels
+- Environmental hazard score
+- Heatmap-ready pollution intensity value
+
+### 💡 Why This Model?
+- Designed for **low-latency inference** onboard embedded systems
+- Optimized for **real-time analysis** of sensor data
+- Fully compatible with our existing visualization pipeline (Folium Maps & Wind Rose)
+
+### 📂 How to Use
+```python
+# Load model
+import torch
+model = torch.load('model.pth')
+model.eval()
+
+# Make prediction
+with torch.no_grad():
+    prediction = model(torch.tensor(input_data, dtype=torch.float32))
+```
+
+---
+
+## 🏟️ Folium Map Visualization
 
 We use **Folium** to create interactive maps that visualize pollution levels and other environmental data.  
 - **Heatmaps**: Show areas with high pollution levels (🔥 red for high, 🟢 green for low).
@@ -62,11 +106,10 @@ Our ensemble model achieves high accuracy due to the following:
 - **Combination of Models**: By combining multiple models, we reduce bias and variance.
 - **Cross-Validation**: We use cross-validation to ensure the model generalizes well to unseen data.
 - **Metrics**: We evaluate the model using precision, recall, and F1-score.
-  
 
 ---
 
-## 🧮 Mathematics Behind the Model
+## �� Mathematics Behind the Model
 
 The core mathematical concepts used in our model include:
 - **Ensemble Averaging**: Combining predictions from multiple models to reduce errors.
@@ -75,17 +118,18 @@ The core mathematical concepts used in our model include:
 - **Neural Networks**: Leveraging layers of neurons to capture complex patterns in the data.
 
 ---
-## 🧢 Arduino code
+## 🧲 Arduino Code
 We have optimized our code by using seven functions and creating dedicated custom functions for each sensor. You can view and download the code.
 Additionally, we have included eight libraries in our project, such as:
-TinyGPS
-Wire.h
-Adafruit_BMP085
-Adafruit_MPU6050
+- TinyGPS
+- Wire.h
+- Adafruit_BMP085
+- Adafruit_MPU6050
+
 These are the core libraries we used to ensure efficient and structured development.
 <img width="317" alt="{129C9ADB-90F0-49D6-AA50-320847FBA749}" src="https://github.com/user-attachments/assets/e37a39b7-200c-43a6-9277-7c9345867ea6" />
 
- We used an Arduino Uno as the main data collection unit. The entire system is powered by a 3.7V lithium battery, followed by a step-up converter to 5V. The sensors used in the system include: three gas sensors, a pressure sensor, a 9-axis accelerometer, an I2C multiplexer, an SD card module, and a GPS module.
+We used an **Arduino Uno** as the main data collection unit. The entire system is powered by a **3.7V lithium battery**, followed by a **step-up converter to 5V**. The sensors used in the system include: three gas sensors, a pressure sensor, a 9-axis accelerometer, an I2C multiplexer, an SD card module, and a GPS module.
 
 ---
 ## 🚀 Get Started
@@ -93,5 +137,7 @@ These are the core libraries we used to ensure efficient and structured developm
 To run the code and visualize the results:
 1. Clone this repository.
 2. Install the required dependencies:
-   ```bash
-   pip install -r requirements.txt
+```bash
+pip install -r requirements.txt
+```
+3. Launch the script and enjoy interactive environmental data visualizations!
